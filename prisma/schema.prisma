@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime       @default(now())
+  recipes      Recipe[]
+  sessions     Session[]
+  mealPlans    MealPlan[]
+  pantryItems  PantryItem[]
+  shoppingLists ShoppingList[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Recipe {
+  ownerId     String?
+  owner       User? @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  id          String             @id @default(cuid())
+  name        String
+  description String
+  imageUrl    String
+  cookingTime Int
+  difficulty  String
+  calories    Int
+  protein     Float
+  servings    Int
+  category    String
+  tags        String[]
+  instructions String[]
+  createdAt   DateTime           @default(now())
+  ingredients RecipeIngredient[]
+  mealPlanItems MealPlanItem[]
+  @@index([ownerId])
+}
+
+model Ingredient {
+  id          String             @id @default(cuid())
+  name        String             @unique
+  category    String
+  defaultUnit String
+  recipes     RecipeIngredient[]
+  pantryItems PantryItem[]
+  shoppingItems ShoppingListItem[]
+}
+
+model RecipeIngredient {
+  id           String     @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     Float
+  unit         String
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  @@unique([recipeId, ingredientId, unit])
+  @@index([ingredientId])
+}
+
+model MealPlan {
+  id            String         @id @default(cuid())
+  userId        String
+  weekStartDate DateTime        @db.Date
+  createdAt     DateTime        @default(now())
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items         MealPlanItem[]
+  shoppingLists ShoppingList[]
+  @@unique([userId, weekStartDate])
+}
+
+model MealPlanItem {
+  id         String   @id @default(cuid())
+  mealPlanId String
+  recipeId   String
+  dayOfWeek  Int
+  servings   Int
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipe     Recipe   @relation(fields: [recipeId], references: [id], onDelete: Restrict)
+  @@unique([mealPlanId, dayOfWeek])
+  @@index([recipeId])
+}
+
+model PantryItem {
+  id           String     @id @default(cuid())
+  userId       String
+  ingredientId String
+  quantity     Float
+  unit         String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  @@unique([userId, ingredientId, unit])
+}
+
+model ShoppingList {
+  id         String             @id @default(cuid())
+  userId     String
+  mealPlanId String             @unique
+  createdAt  DateTime           @default(now())
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mealPlan   MealPlan           @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  items      ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  id             String       @id @default(cuid())
+  shoppingListId String
+  ingredientId   String
+  quantity       Float
+  unit           String
+  isPurchased    Boolean      @default(false)
+  shoppingList   ShoppingList  @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  ingredient     Ingredient   @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  @@unique([shoppingListId, ingredientId, unit])
+  @@index([ingredientId])
+}
